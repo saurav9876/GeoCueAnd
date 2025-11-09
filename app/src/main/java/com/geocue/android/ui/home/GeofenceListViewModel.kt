@@ -47,6 +47,17 @@ class GeofenceListViewModel @Inject constructor(
         viewModelScope.launch {
             interactor.observe().collect { geofences ->
                 interactor.syncMonitoring(geofences)
+                
+                // FIX: Start continuous location updates when there are active geofences
+                // This allows Android's geofencing service to detect boundary crossings immediately
+                // instead of waiting 5-10 minutes for a random location event
+                if (geofences.any { it.isEnabled } && permissionChecker.hasLocationPermission()) {
+                    locationClient.observeLocationUpdates()
+                        .collect { location ->
+                            // Update last known location for UI display
+                            _lastKnownLocation.value = location
+                        }
+                }
             }
         }
 

@@ -27,10 +27,13 @@ class GeofenceController(private val app: Application) {
     }
 
     @RequiresPermission(anyOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    fun registerGeofence(location: GeofenceLocation) {
+    fun registerGeofence(location: GeofenceLocation, useInitialTrigger: Boolean = true) {
         val geofence = buildGeofence(location)
+        val initialTrigger = if (useInitialTrigger) {
+            GeofencingRequest.INITIAL_TRIGGER_ENTER or GeofencingRequest.INITIAL_TRIGGER_EXIT
+        } else 0
         val request = GeofencingRequest.Builder()
-            .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER or GeofencingRequest.INITIAL_TRIGGER_EXIT)
+            .setInitialTrigger(initialTrigger)
             .addGeofence(geofence)
             .build()
 
@@ -48,8 +51,12 @@ class GeofenceController(private val app: Application) {
     private fun buildGeofence(location: GeofenceLocation): Geofence = Geofence.Builder()
         .setRequestId(location.id.toString())
         .setCircularRegion(location.latitude, location.longitude, location.radius)
-        .setTransitionTypes(Geofence.GEOFENCE_TRANSITION_ENTER or Geofence.GEOFENCE_TRANSITION_EXIT)
-        .setLoiteringDelay(1_000)
+        .setTransitionTypes(
+            Geofence.GEOFENCE_TRANSITION_ENTER or
+                Geofence.GEOFENCE_TRANSITION_EXIT or
+                Geofence.GEOFENCE_TRANSITION_DWELL
+        )
+        .setLoiteringDelay(30_000) // 30 seconds - prevents drive-by notifications but fast enough for real use
         .setExpirationDuration(Geofence.NEVER_EXPIRE)
         .build()
 }

@@ -38,6 +38,8 @@ class GeofenceInteractor @Inject constructor(
     suspend fun syncMonitoring(geofences: List<GeofenceLocation>) {
         controller.removeAll()
         if (!permissionChecker.hasBackgroundLocationPermission()) return
-        geofences.filter { it.isEnabled }.forEach { controller.registerGeofence(it) }
+        geofences
+            .filter { it.isEnabled }
+            .forEach { controller.registerGeofence(it, useInitialTrigger = false) }
     }
 }

@@ -6,4 +6,6 @@
 **/build/
 .cxx/
 .DS_Store
+# Ignore local secrets (developers should create their own copy)
 secrets.properties
+# Keep secrets.defaults.properties as template in git

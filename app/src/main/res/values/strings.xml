@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">GeoCue</string>
-    <string name="maps_api_key">ADD_YOUR_KEY_HERE</string>
+    <string name="maps_api_key">AIzaSyAW3_L_FlneZHCSxDg2pjB0TuqhxtpkSPw</string>
     <string name="permission_rationale_location">GeoCue relies on location services to trigger reminders when you arrive or leave saved places.</string>
     <string name="permission_rationale_notifications">Enable notifications so GeoCue can alert you for location reminders.</string>
     <string name="permission_settings_action">Open Settings</string>

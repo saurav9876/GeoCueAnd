@@ -7,21 +7,23 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.geocue.android.domain.model.GeofenceLocation
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.Circle
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.rememberMarkerState
 
 @Composable
 fun MapScreen(
@@ -57,7 +59,7 @@ fun MapScreen(
         FloatingActionButton(
             onClick = onCenterOnUser,
             modifier = Modifier
-                .align(Alignment.BottomEnd)
+                .align(Alignment.TopEnd)
                 .padding(16.dp)
         ) {
             Icon(imageVector = Icons.Outlined.MyLocation, contentDescription = null)
@@ -69,7 +71,7 @@ fun MapScreen(
 private fun GeofenceMarker(geofence: GeofenceLocation) {
     val latLng = LatLng(geofence.latitude, geofence.longitude)
     Marker(
-        position = latLng,
+        state = rememberMarkerState(position = latLng),
         title = geofence.name,
         snippet = geofence.address.takeIf { it.isNotBlank() }
     )
@@ -77,8 +79,8 @@ private fun GeofenceMarker(geofence: GeofenceLocation) {
     Circle(
         center = latLng,
         radius = geofence.radius.toDouble(),
-        fillColor = 0x332196F3,
-        strokeColor = 0xFF2196F3.toInt(),
+        fillColor = Color(0x332196F3),
+        strokeColor = Color(0xFF2196F3.toInt()),
         strokeWidth = 2f
     )
 }

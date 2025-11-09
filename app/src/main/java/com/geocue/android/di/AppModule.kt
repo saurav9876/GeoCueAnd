@@ -45,6 +45,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideNotificationManager(app: Application): GeofenceNotificationManager =
-        GeofenceNotificationManager(app, NotificationChannels(app))
+    fun provideNotificationManager(app: Application, database: GeoCueDatabase): GeofenceNotificationManager =
+        GeofenceNotificationManager(app, NotificationChannels(app), database)
 }

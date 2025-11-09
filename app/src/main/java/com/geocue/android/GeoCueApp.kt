@@ -9,12 +9,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -27,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.geocue.android.domain.model.GeofenceLocation
 import com.geocue.android.permissions.PermissionChecker
 import com.geocue.android.ui.home.AddReminderSheet
 import com.geocue.android.ui.home.AddReminderViewModel
@@ -34,12 +40,16 @@ import com.geocue.android.ui.home.GeofenceListViewModel
 import com.geocue.android.ui.home.HomeScreen
 import com.geocue.android.ui.map.MapScreen
 import com.geocue.android.ui.map.MapViewModel
+import com.geocue.android.ui.notifications.NotificationHistorySheet
 import com.geocue.android.ui.settings.SettingsScreen
 import com.geocue.android.ui.settings.SettingsViewModel
 import com.geocue.android.ui.theme.GeoCueTheme
+import com.geocue.android.ui.notifications.NotificationHistoryViewModel
+import java.util.UUID
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.launch
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun GeoCueApp() {
     GeoCueTheme {
@@ -113,7 +123,12 @@ fun GeoCueApp() {
         val addReminderViewModel: AddReminderViewModel = hiltViewModel()
         val addReminderState by addReminderViewModel.state.collectAsStateWithLifecycle()
 
+        val notificationHistoryViewModel: NotificationHistoryViewModel = hiltViewModel()
+        val notificationHistoryState by notificationHistoryViewModel.uiState.collectAsStateWithLifecycle()
+
         var showAddReminder by rememberSaveable { mutableStateOf(false) }
+        var editingReminder by remember { mutableStateOf<GeofenceLocation?>(null) }
+        var showNotificationHistory by rememberSaveable { mutableStateOf(false) }
 
         Scaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -140,6 +155,13 @@ fun GeoCueApp() {
                     },
                     onToggleReminder = { location, enabled -> homeViewModel.toggleEnabled(location, enabled) },
                     onDeleteReminder = { location -> homeViewModel.delete(location) },
+                    onEditReminder = { location ->
+                        editingReminder = location
+                        addReminderViewModel.loadReminderForEditing(location)
+                        showAddReminder = true
+                    },
+                    onShowNotificationHistory = { showNotificationHistory = true },
+                    notificationCount = notificationHistoryState.notificationGroups.sumOf { it.items.size },
                     modifier = Modifier.padding(innerPadding)
                 )
                 "map" -> MapScreen(
@@ -160,13 +182,33 @@ fun GeoCueApp() {
                 state = addReminderState,
                 onDismiss = {
                     showAddReminder = false
+                    editingReminder = null
                     addReminderViewModel.reset()
                 },
                 onConfirm = {
                     val request = addReminderViewModel.buildRequest()
                     if (request != null) {
-                        homeViewModel.addReminder(request)
+                        if (editingReminder != null) {
+                            // Update existing reminder
+                            homeViewModel.updateReminder(
+                                editingReminder!!.copy(
+                                    name = request.name,
+                                    address = request.address,
+                                    latitude = request.latitude ?: editingReminder!!.latitude,
+                                    longitude = request.longitude ?: editingReminder!!.longitude,
+                                    radius = request.radius,
+                                    entryMessage = request.entryMessage,
+                                    exitMessage = request.exitMessage,
+                                    notifyOnEntry = request.notifyOnEntry,
+                                    notifyOnExit = request.notifyOnExit
+                                )
+                            )
+                        } else {
+                            // Create new reminder
+                            homeViewModel.addReminder(request)
+                        }
                         showAddReminder = false
+                        editingReminder = null
                         addReminderViewModel.reset()
                     } else {
                         scope.launch {
@@ -183,7 +225,18 @@ fun GeoCueApp() {
                 onToggleEntry = addReminderViewModel::toggleNotifyOnEntry,
                 onToggleExit = addReminderViewModel::toggleNotifyOnExit,
                 onUseCurrentLocation = addReminderViewModel::useCurrentLocation,
-                onSelectCoordinates = addReminderViewModel::selectCoordinates
+                onSelectCoordinates = addReminderViewModel::selectCoordinates,
+                editingReminder = editingReminder
+            )
+        }
+
+        if (showNotificationHistory) {
+            NotificationHistorySheet(
+                onDismiss = { showNotificationHistory = false },
+                notifications = notificationHistoryState.notificationGroups,
+                isLoading = notificationHistoryState.isLoading,
+                onClearAll = { notificationHistoryViewModel.clearAllNotifications() },
+                onDeleteOld = { notificationHistoryViewModel.deleteOldNotifications() }
             )
         }
     }

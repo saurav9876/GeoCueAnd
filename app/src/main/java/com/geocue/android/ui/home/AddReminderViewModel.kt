@@ -5,6 +5,7 @@ import android.location.Address
 import android.location.Geocoder
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.geocue.android.domain.model.GeofenceLocation
 import com.geocue.android.location.AndroidLocationClient
 import com.geocue.android.permissions.PermissionChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -159,6 +160,24 @@ class AddReminderViewModel @Inject constructor(
         _state.value = AddReminderUiState(currentLocation = _state.value.currentLocation)
     }
 
+    fun loadReminderForEditing(reminder: GeofenceLocation) {
+        _state.value = AddReminderUiState(
+            name = reminder.name,
+            selectedLocation = PlaceSearchResult(
+                name = reminder.name,
+                address = reminder.address.takeIf { it.isNotBlank() },
+                latitude = reminder.latitude,
+                longitude = reminder.longitude
+            ),
+            radius = reminder.radius,
+            entryMessage = reminder.entryMessage,
+            exitMessage = reminder.exitMessage,
+            notifyOnEntry = reminder.notifyOnEntry,
+            notifyOnExit = reminder.notifyOnExit,
+            currentLocation = _state.value.currentLocation
+        )
+    }
+
     fun selectCoordinates(latitude: Double, longitude: Double) {
         viewModelScope.launch {
             val resolved = if (geocoder != null) {
@@ -190,10 +209,60 @@ class AddReminderViewModel @Inject constructor(
         val latValue = this.latitude
         val lngValue = this.longitude
         if (!latValue.isFinite() || !lngValue.isFinite()) return null
-        val primary = featureName ?: thoroughfare ?: subLocality ?: locality ?: adminArea ?: countryName ?: return null
-        val formattedAddress = listOfNotNull(thoroughfare, locality, adminArea, countryName)
-            .joinToString(separator = ", ")
-            .ifBlank { null }
+        
+        // Build a better primary name by prioritizing relevant fields
+        val primary = when {
+            // If there's a feature name (building, landmark), use it
+            !featureName.isNullOrBlank() && featureName != locality -> featureName
+            // If there's a premise or sub-thoroughfare (building number), combine with street
+            !premises.isNullOrBlank() || !subThoroughfare.isNullOrBlank() -> {
+                listOfNotNull(subThoroughfare, premises, thoroughfare).joinToString(" ").ifBlank { null }
+            }
+            // Use street name if available
+            !thoroughfare.isNullOrBlank() -> thoroughfare
+            // Fall back to area names
+            !subLocality.isNullOrBlank() -> subLocality
+            !locality.isNullOrBlank() -> locality
+            !subAdminArea.isNullOrBlank() -> subAdminArea
+            !adminArea.isNullOrBlank() -> adminArea
+            else -> countryName
+        } ?: return null
+        
+        // Build a comprehensive address for display
+        val addressParts = mutableListOf<String>()
+        
+        // Add street address if not already in primary
+        if (primary != thoroughfare && !thoroughfare.isNullOrBlank()) {
+            addressParts.add(thoroughfare)
+        }
+        
+        // Add locality (city)
+        if (!locality.isNullOrBlank() && primary != locality) {
+            addressParts.add(locality)
+        }
+        
+        // Add sub-admin (county) if distinct from locality
+        if (!subAdminArea.isNullOrBlank() && subAdminArea != locality) {
+            addressParts.add(subAdminArea)
+        }
+        
+        // Add admin (state/province)
+        if (!adminArea.isNullOrBlank()) {
+            addressParts.add(adminArea)
+        }
+        
+        // Add country if not already obvious
+        if (!countryName.isNullOrBlank() && addressParts.size < 3) {
+            addressParts.add(countryName)
+        }
+        
+        // Add postal code if available
+        if (!postalCode.isNullOrBlank()) {
+            addressParts.add(postalCode)
+        }
+        
+        val formattedAddress = addressParts.joinToString(", ").ifBlank { null }
+        
         return PlaceSearchResult(
             name = primary,
             address = formattedAddress,
@@ -204,7 +273,7 @@ class AddReminderViewModel @Inject constructor(
 
     companion object {
         private const val MIN_QUERY_LENGTH = 3
-        private const val MAX_RESULTS = 5
+        private const val MAX_RESULTS = 10  // Increased from 5 to get more options
         private const val SEARCH_DEBOUNCE_MS = 400L
     }
 }

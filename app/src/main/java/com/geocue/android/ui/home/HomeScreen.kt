@@ -3,26 +3,35 @@ package com.geocue.android.ui.home
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.LocationOff
 import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,52 +42,95 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.geocue.android.domain.model.GeofenceLocation
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     state: GeofenceListUiState,
     onAddReminderClick: () -> Unit,
     onToggleReminder: (GeofenceLocation, Boolean) -> Unit,
     onDeleteReminder: (GeofenceLocation) -> Unit,
+    onEditReminder: (GeofenceLocation) -> Unit,
+    onShowNotificationHistory: () -> Unit = {},
+    notificationCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            if (!state.canMonitorInBackground) {
-                PermissionBanner()
-            }
-
-            if (state.active.isEmpty() && state.inactive.isEmpty()) {
-                EmptyState(onAddTapped = onAddReminderClick)
-            } else {
-                ReminderSection(
-                    title = "Active reminders",
-                    reminders = state.active,
-                    onToggle = onToggleReminder,
-                    onDelete = onDeleteReminder
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                ReminderSection(
-                    title = "Inactive reminders",
-                    reminders = state.inactive,
-                    onToggle = onToggleReminder,
-                    onDelete = onDeleteReminder
-                )
-            }
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text(
+                        text = "GeoCue",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                },
+                actions = {
+                    IconButton(onClick = onShowNotificationHistory) {
+                        BadgedBox(
+                            badge = {
+                                if (notificationCount > 0) {
+                                    Badge {
+                                        Text(
+                                            text = notificationCount.toString(),
+                                            fontSize = MaterialTheme.typography.labelSmall.fontSize
+                                        )
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Notifications,
+                                contentDescription = "Notifications"
+                            )
+                        }
+                    }
+                }
+            )
         }
+    ) { innerPadding ->
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                if (!state.canMonitorInBackground) {
+                    PermissionBanner()
+                }
 
-        FloatingActionButton(
-            onClick = onAddReminderClick,
-            modifier = Modifier
-                .padding(16.dp)
-                .align(Alignment.BottomEnd)
-        ) {
-            Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
+                if (state.active.isEmpty() && state.inactive.isEmpty()) {
+                    EmptyState(onAddTapped = onAddReminderClick)
+                } else {
+                    ReminderSection(
+                        title = "Active reminders",
+                        reminders = state.active,
+                        onToggle = onToggleReminder,
+                        onDelete = onDeleteReminder,
+                        onEdit = onEditReminder
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    ReminderSection(
+                        title = "Inactive reminders",
+                        reminders = state.inactive,
+                        onToggle = onToggleReminder,
+                        onDelete = onDeleteReminder,
+                        onEdit = onEditReminder
+                    )
+                }
+            }
+
+            FloatingActionButton(
+                onClick = onAddReminderClick,
+                modifier = Modifier
+                    .padding(16.dp)
+                    .align(Alignment.BottomEnd)
+            ) {
+                Icon(imageVector = Icons.Outlined.Add, contentDescription = null)
+            }
         }
     }
 }
@@ -89,6 +141,7 @@ private fun ReminderSection(
     reminders: List<GeofenceLocation>,
     onToggle: (GeofenceLocation, Boolean) -> Unit,
     onDelete: (GeofenceLocation) -> Unit,
+    onEdit: (GeofenceLocation) -> Unit,
 ) {
     if (reminders.isEmpty()) return
 
@@ -100,7 +153,7 @@ private fun ReminderSection(
 
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         items(reminders, key = { it.id }) { reminder ->
-            GeofenceCard(reminder = reminder, onToggle = onToggle, onDelete = onDelete)
+            GeofenceCard(reminder = reminder, onToggle = onToggle, onDelete = onDelete, onEdit = onEdit)
         }
     }
 }
@@ -110,6 +163,7 @@ private fun GeofenceCard(
     reminder: GeofenceLocation,
     onToggle: (GeofenceLocation, Boolean) -> Unit,
     onDelete: (GeofenceLocation) -> Unit,
+    onEdit: (GeofenceLocation) -> Unit,
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -139,7 +193,7 @@ private fun GeofenceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
-            androidx.compose.foundation.layout.Row(
+            Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -148,6 +202,9 @@ private fun GeofenceCard(
                     onCheckedChange = { onToggle(reminder, it) }
                 )
                 Spacer(modifier = Modifier.weight(1f))
+                IconButton(onClick = { onEdit(reminder) }) {
+                    Icon(imageVector = Icons.Outlined.Edit, contentDescription = "Edit reminder")
+                }
                 IconButton(onClick = { onDelete(reminder) }) {
                     Icon(imageVector = Icons.Outlined.Delete, contentDescription = "Delete reminder")
                 }
@@ -165,7 +222,7 @@ private fun PermissionBanner() {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = Icons.Outlined.LocationOff, contentDescription = null)
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
@@ -175,7 +232,7 @@ private fun PermissionBanner() {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "GeoCue needs "Allow all the time" access to trigger reminders while the app is closed.",
+                text = "GeoCue needs \"Allow all the time\" access to trigger reminders while the app is closed.",
                 style = MaterialTheme.typography.bodySmall
             )
         }

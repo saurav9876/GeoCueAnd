@@ -40,7 +40,7 @@ GeoCueAnd/
 2. From the project root, generate the Gradle wrapper (the repo omits binaries):
    ```bash
    cd GeoCueAnd
-   gradle wrapper --gradle-version 8.5
+   gradle wrapper --gradle-version 8.7
    ```
 3. Open the project in Android Studio (Giraffe+ recommended) or run from the command line:
    ```bash

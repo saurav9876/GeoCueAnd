@@ -9,6 +9,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
+private val ColorWhite = androidx.compose.ui.graphics.Color.White
+private val ColorBlack = androidx.compose.ui.graphics.Color(0xFF1C1B1F)
+
 private val LightColors = lightColorScheme(
     primary = BluePrimary,
     onPrimary = ColorWhite,
@@ -53,6 +56,3 @@ fun GeoCueTheme(
         content = content
     )
 }
-
-private val ColorWhite = androidx.compose.ui.graphics.Color.White
-private val ColorBlack = androidx.compose.ui.graphics.Color(0xFF1C1B1F)

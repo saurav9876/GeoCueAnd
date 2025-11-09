@@ -54,7 +54,7 @@ fun SettingsScreen(
         PermissionCard(
             title = "Background location",
             isGranted = state.hasBackgroundPermission,
-            description = "Grant "Allow all the time" to trigger geofences when GeoCue is closed.",
+            description = "Grant \"Allow all the time\" to trigger geofences when GeoCue is closed.",
             onOpenSettings = { context.openAppSettings() }
         )
 
